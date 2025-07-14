@@ -6,8 +6,40 @@ namespace Drupal\mikedelta_popup\Form;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\file\Entity\File;
+use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Messenger\MessengerInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\Core\Url;
 
 class SettingsForm extends ConfigFormBase {
+
+  /**
+   * O serviço de mensagens.
+   * @var \Drupal\Core\Messenger\MessengerInterface
+   */
+  protected $messenger;
+
+  /**
+   * Constrói o SettingsForm.
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
+   * A fábrica de configurações.
+   * @param \Drupal\Core\Messenger\MessengerInterface $messenger
+   * O serviço de mensagens.
+   */
+  public function __construct(ConfigFactoryInterface $config_factory, MessengerInterface $messenger) {
+    parent::__construct($config_factory);
+    $this->messenger = $messenger;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container) {
+    return new static(
+      $container->get('config.factory'),
+      $container->get('messenger')
+    );
+  }
 
   const MAX_IMAGES = 10;
 
@@ -92,9 +124,16 @@ class SettingsForm extends ConfigFormBase {
     ];
 
     for ($i = 0; $i < self::MAX_IMAGES; $i++) {
+
+      $has_image = isset($gallery_items[$i]['image_fid']) && !empty($gallery_items[$i]['image_fid']);
+
+      $title = $has_image
+        ? $this->t('Imagem @num ✔ (Preenchido)', ['@num' => $i + 1])
+        : $this->t('Imagem @num', ['@num' => $i + 1]);
+
       $form['image_settings']['gallery_items'][$i] = [
         '#type' => 'details',
-        '#title' => $this->t('Imagem @num', ['@num' => $i + 1]),
+        '#title' => $title,
       ];
 
       $form['image_settings']['gallery_items'][$i]['image_fid'] = [
@@ -110,7 +149,7 @@ class SettingsForm extends ConfigFormBase {
         '#title' => $this->t('Link para esta imagem'),
         '#default_value' => $gallery_items[$i]['link_url'] ?? '',
       ];
-      
+
       $form['image_settings']['gallery_items'][$i]['link_target'] = [
         '#type' => 'radios',
         '#title' => $this->t('Abrir link em'),
@@ -187,6 +226,13 @@ class SettingsForm extends ConfigFormBase {
       ->clear('popup_link_target')
       ->save();
 
-    parent::submitForm($form, $form_state);
+    $cache_url = Url::fromRoute('system.performance_settings')->toString();
+
+    $warning_message = $this->t('As alterações podem não ser visíveis imediatamente devido ao sistema de cache. <a href=":cache_url">Limpe todos os caches</a> para garantir que as novas configurações sejam aplicadas.', [
+      ':cache_url' => $cache_url,
+    ]);
+
+    $this->messenger->addStatus($this->t('As configurações do MikeDelta Popup foram salvas com sucesso.'));
+    $this->messenger->addWarning($warning_message);
   }
 }
