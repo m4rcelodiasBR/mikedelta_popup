@@ -126,10 +126,7 @@ class SettingsForm extends ConfigFormBase {
     for ($i = 0; $i < self::MAX_IMAGES; $i++) {
 
       $has_image = isset($gallery_items[$i]['image_fid']) && !empty($gallery_items[$i]['image_fid']);
-
-      $title = $has_image
-        ? $this->t('Imagem @num ✔ (Preenchido)', ['@num' => $i + 1])
-        : $this->t('Imagem @num', ['@num' => $i + 1]);
+      $title = $has_image ? $this->t('Imagem @num ✔ (Preenchido)', ['@num' => $i + 1]) : $this->t('Imagem @num', ['@num' => $i + 1]);
 
       $form['image_settings']['gallery_items'][$i] = [
         '#type' => 'details',
@@ -156,9 +153,44 @@ class SettingsForm extends ConfigFormBase {
         '#options' => ['_self' => $this->t('Mesma janela'), '_blank' => $this->t('Nova janela')],
         '#default_value' => $gallery_items[$i]['link_target'] ?? '_self',
       ];
-    }
 
+      if ($has_image) {
+        $form['image_settings']['gallery_items'][$i]['actions']['clear'] = [
+          '#type' => 'submit',
+          '#value' => $this->t('Limpar este slot'),
+          '#name' => 'clear_button_' . $i,
+          '#submit' => ['::clearSlotSubmit'],
+          '#limit_validation_errors' => [],
+          '#attributes' => ['class' => ['button--danger']],
+        ];
+      }
+    }
+     
     return parent::buildForm($form, $form_state);
+  }
+  
+
+  public function clearSlotSubmit(array &$form, FormStateInterface $form_state) {
+
+    $triggering_element = $form_state->getTriggeringElement();
+    $button_name_parts = explode('_', $triggering_element['#name']);
+    $index_to_clear = end($button_name_parts);
+
+    $user_input = &$form_state->getUserInput();
+    unset($user_input['gallery_items'][$index_to_clear]);
+
+    $config = $this->configFactory()->getEditable('mikedelta_popup.settings');
+    $gallery_items = $config->get('gallery_items');
+
+    unset($gallery_items[$index_to_clear]);
+
+    $gallery_items = array_values($gallery_items);
+    
+    $config->set('gallery_items', $gallery_items)->save();
+
+    $this->messenger->addStatus($this->t('O slot de Imagem @num foi limpo.', ['@num' => (int)$index_to_clear + 1]));
+  
+    $form_state->setRebuild(TRUE);
   }
 
   public function submitForm(array &$form, FormStateInterface $form_state) {
