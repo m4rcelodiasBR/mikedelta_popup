@@ -1,0 +1,12 @@
+md-assets:
+  version: 1.x
+  css:
+    theme:
+      assets/css/mikedelta_popup.css: {}
+  js:
+    assets/js/mikedelta_popup.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/drupalSettings
+    - core/once

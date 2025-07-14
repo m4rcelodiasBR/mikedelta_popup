@@ -1,0 +1,7 @@
+mikedelta_popup.settings_form:
+  path: '/admin/config/content/md-popup'
+  defaults:
+    _form: '\Drupal\mikedelta_popup\Form\SettingsForm'
+    _title: 'Configurações do MikeDelta Popup'
+  requirements:
+    _permission: 'administer site configuration'

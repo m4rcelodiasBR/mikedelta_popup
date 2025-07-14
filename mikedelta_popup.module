@@ -1,0 +1,141 @@
+<?php
+// mikedelta_popup.module
+
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Url;
+
+/**
+ * Implements hook_help().
+ */
+function mikedelta_popup_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Ajuda principal do módulo, acessível em /admin/help/mikedelta_popup
+    case 'help.page.mikedelta_popup':
+      $output = '<h3>' . t('Sobre o Módulo MikeDelta Popup') . '</h3>';
+      $output .= '<p>' . t('Este módulo permite a criação de um pop-up customizável para ser exibido exclusivamente na página inicial do site. O pop-up pode conter texto formatado ou uma galeria de imagens rotativas.') . '</p>';
+
+      $output .= '<h3>' . t('Principais Funcionalidades') . '</h3>';
+      $output .= '<ul>';
+      $output .= '<li>' . t('<strong>Controle de Ativação:</strong> Permite habilitar/desabilitar o pop-up globalmente e definir um período de exibição com data de início e fim.') . '</li>';
+      $output .= '<li>' . t('<strong>Exibição Exclusiva:</strong> O pop-up é configurado para aparecer apenas na página inicial do site (<front>).') . '</li>';
+      $output .= '<li>' . t('<strong>Dois Tipos de Conteúdo:</strong> Suporta pop-ups de texto (usando o editor do Drupal) ou de imagem.') . '</li>';
+      $output .= '<li>' . t('<strong>Galeria de Imagens Rotativa:</strong> Permite o cadastro de até 5 imagens. A cada nova sessão de um visitante, uma imagem diferente da galeria é exibida, em ciclo.') . '</li>';
+      $output .= '<li>' . t('<strong>Links Individuais:</strong> Cada imagem cadastrada na galeria pode ter seu próprio link de destino e definir se ele abre em uma nova janela.') . '</li>';
+      $output .= '</ul>';
+
+      $output .= '<h3>' . t('Como Configurar') . '</h3>';
+      $settings_url = Url::fromRoute('mikedelta_popup.settings_form')->toString();
+      $output .= '<p>' . t('Todas as configurações podem ser feitas na <a href=":url">página de configuração do módulo</a>.', [':url' => $settings_url]) . '</p>';
+      $output .= '<ol>';
+      $output .= '<li>' . t('<strong>Ative o pop-up:</strong> Marque a caixa "Ativar o popup no site" e, se desejar, defina as datas de início e fim.') . '</li>';
+      $output .= '<li>' . t('<strong>Escolha o tipo:</strong> Selecione "Apenas Texto" ou "Imagem".') . '</li>';
+      $output .= '<li>' . t('<strong>Se for Imagem:</strong> No painel "Imagens da Galeria", preencha os "slots" desejados. Para cada imagem, faça o upload do arquivo e, opcionalmente, insira a URL de destino e como ela deve abrir.') . '</li>';
+      $output .= '<li>' . t('<strong>Se for Texto:</strong> Utilize o editor de texto para criar o conteúdo do seu pop-up.') . '</li>';
+      $output .= '<li>' . t('<strong>Salve as configurações.</strong>') . '</li>';
+      $output .= '</ol>';
+
+      $output .= '<h4>' . t('Observação sobre a Rotação de Imagens') . '</h4>';
+      $output .= '<p>' . t('A rotação é baseada na sessão do usuário. Isso significa que, para testar a troca de imagens, você precisa simular novas visitas. A melhor forma de fazer isso é acessando o site em uma janela anônima, fechando-a completamente e abrindo uma nova janela anônima para a visita seguinte.') . '</p>';
+
+      return $output;
+
+    // Ajuda contextual na própria página de configuração
+    case 'mikedelta_popup.settings_form':
+      return '<p>' . t('Use este formulário para configurar o pop-up que aparecerá na página inicial do seu site.') . '</p>';
+  }
+}
+
+/**
+ * Implements hook_page_attachments().
+ */
+function mikedelta_popup_page_attachments(array &$page) {
+
+  if (isset($page['#attached']['drupalSettings']['mikedelta_popup'])) {
+    return;
+  }
+
+  // Aqui faz o MikeDelta Popup aparecer apenas na página inicial <front>
+  $path_matcher = \Drupal::service('path.matcher');
+  if (!$path_matcher->isFrontPage()) {
+    return; // Se não for a página inicial, para a execução aqui.
+  }
+
+  $config = \Drupal::config('mikedelta_popup.settings');
+
+  // Lógica de verificação de ativação e data (continua a mesma)
+  if (!$config->get('popup_enabled')) { return; }
+  $start_date_str = $config->get('activation_start_date');
+  $end_date_str = $config->get('activation_end_date');
+  $now = new \DateTime('now', new \DateTimeZone('America/Sao_Paulo')); // Usa o fuso horário correto
+  if (!empty($start_date_str)) {
+    $start_date = new \DateTime($start_date_str);
+    if ($now < $start_date) { return; }
+  }
+  if (!empty($end_date_str)) {
+    $end_date = new \DateTime($end_date_str);
+    $end_date->modify('+1 day');
+    if ($now > $end_date) { return; }
+  }
+
+  $popup_type = $config->get('popup_type');
+  $image_to_display = NULL;
+
+  if ($popup_type == 'image') {
+    $gallery_items = $config->get('gallery_items');
+
+    if (!empty($gallery_items)) {
+      $session = \Drupal::request()->getSession();
+      $last_index = $session->get('mikedelta_popup_last_index', -1);
+      $next_index = ($last_index + 1) % count($gallery_items);
+      $session->set('mikedelta_popup_last_index', $next_index);
+      $image_to_display = $gallery_items[$next_index];
+    }
+  }
+
+  $image_url = '';
+  $link_url_string = '';
+  $link_target = '_self';
+
+  if ($image_to_display) {
+    $file = \Drupal\file\Entity\File::load($image_to_display['image_fid']);
+    if ($file) {
+      $image_url = $file->createFileUrl();
+    }
+    // Pega os valores do item a ser exibido
+    $link_url_string = $image_to_display['link_url'] ?? '';
+    $link_target = $image_to_display['link_target'] ?? '_self';
+  }
+  
+  // --- BLOCO DE CÓDIGO CORRIGIDO ---
+  // A verificação de segurança foi reinserida aqui.
+  $final_link_url = '';
+  if (!empty($link_url_string)) {
+    // Verifica se é uma URL externa
+    if (str_starts_with($link_url_string, 'http://') || str_starts_with($link_url_string, 'https://')) {
+      $final_link_url = $link_url_string;
+    }
+    // Senão, trata como um caminho interno do Drupal
+    else {
+      try {
+        $final_link_url = \Drupal\Core\Url::fromUserInput($link_url_string)->toString();
+      } catch (\InvalidArgumentException $e) {
+        \Drupal::logger('mikedelta_popup')->warning('O caminho interno para o item da galeria é inválido: @path', ['@path' => $link_url_string]);
+        $final_link_url = '#'; // Fallback seguro
+      }
+    }
+  }
+  
+  $build = ['#type' => 'processed_text', '#text' => $config->get('popup_text.value'), '#format' => $config->get('popup_text.format')];
+  $rendered_text = \Drupal::service('renderer')->render($build);
+
+  // Anexa a biblioteca e as configurações
+  $page['#cache']['contexts'][] = 'session';
+  $page['#attached']['library'][] = 'mikedelta_popup/md-assets';
+  $page['#attached']['drupalSettings']['mikedelta_popup'] = [
+    'type' => $popup_type,
+    'text' => (string) $rendered_text,
+    'imageUrl' => $image_url,
+    'linkUrl' => $final_link_url, // Usa a URL final e segura
+    'linkTarget' => $link_target,
+  ];
+}
