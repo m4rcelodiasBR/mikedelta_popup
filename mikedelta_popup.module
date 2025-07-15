@@ -9,17 +9,16 @@ use Drupal\Core\Url;
  */
 function mikedelta_popup_help($route_name, RouteMatchInterface $route_match) {
   switch ($route_name) {
-    // Ajuda principal do módulo, acessível em /admin/help/mikedelta_popup
     case 'help.page.mikedelta_popup':
       $output = '<h3>' . t('Sobre o Módulo MikeDelta Popup') . '</h3>';
-      $output .= '<p>' . t('Este módulo permite a criação de um pop-up customizável para ser exibido exclusivamente na página inicial do site. O pop-up pode conter texto formatado ou uma galeria de imagens rotativas.') . '</p>';
+      $output .= '<p>' . t('Este módulo permite a criação de um pop-up customizável para ser exibido exclusivamente na página inicial do site. O pop-up pode conter texto formatado ou uma galeria de pop-ups rotativas.') . '</p>';
 
       $output .= '<h3>' . t('Principais Funcionalidades') . '</h3>';
       $output .= '<ul>';
       $output .= '<li>' . t('<strong>Controle de Ativação:</strong> Permite habilitar/desabilitar o pop-up globalmente e definir um período de exibição com data de início e fim.') . '</li>';
-      $output .= '<li>' . t('<strong>Exibição Exclusiva:</strong> O pop-up é configurado para aparecer apenas na página inicial do site (<front>).') . '</li>';
-      $output .= '<li>' . t('<strong>Dois Tipos de Conteúdo:</strong> Suporta pop-ups de texto (usando o editor do Drupal) ou de imagem.') . '</li>';
-      $output .= '<li>' . t('<strong>Galeria de Imagens Rotativa:</strong> Permite o cadastro de até 5 imagens. A cada nova sessão de um visitante, uma imagem diferente da galeria é exibida, em ciclo.') . '</li>';
+      $output .= '<li>' . t('<strong>Exibição Exclusiva:</strong> O pop-up é configurado para aparecer apenas na página inicial do site.') . '</li>';
+      $output .= '<li>' . t('<strong>Dois Tipos de Popup:</strong> Suporta pop-ups de texto (usando o editor do Drupal) ou de imagem.') . '</li>';
+      $output .= '<li>' . t('<strong>Galeria de Popups Rotativa:</strong> Permite o cadastro de até 10 imagens. A cada nova sessão de um visitante, uma imagem diferente da galeria é exibida, em ciclo.') . '</li>';
       $output .= '<li>' . t('<strong>Links Individuais:</strong> Cada imagem cadastrada na galeria pode ter seu próprio link de destino e definir se ele abre em uma nova janela.') . '</li>';
       $output .= '</ul>';
 
@@ -28,15 +27,21 @@ function mikedelta_popup_help($route_name, RouteMatchInterface $route_match) {
       $output .= '<p>' . t('Todas as configurações podem ser feitas na <a href=":url">página de configuração do módulo</a>.', [':url' => $settings_url]) . '</p>';
       $output .= '<ol>';
       $output .= '<li>' . t('<strong>Ative o pop-up:</strong> Marque a caixa "Ativar o popup no site" e, se desejar, defina as datas de início e fim.') . '</li>';
-      $output .= '<li>' . t('<strong>Escolha o tipo:</strong> Selecione "Apenas Texto" ou "Imagem".') . '</li>';
-      $output .= '<li>' . t('<strong>Se for Imagem:</strong> No painel "Imagens da Galeria", preencha os "slots" desejados. Para cada imagem, faça o upload do arquivo e, opcionalmente, insira a URL de destino e como ela deve abrir.') . '</li>';
-      $output .= '<li>' . t('<strong>Se for Texto:</strong> Utilize o editor de texto para criar o conteúdo do seu pop-up.') . '</li>';
+      $output .= '<li>' . t('<strong>Escolha o tipo:</strong> Selecione "Tipo Texto" ou "Tipo Imagem".') . '</li>';
+      $output .= '<li>' . t('<strong>Se for Tipo Imagem:</strong> No painel "Imagens da Galeria", preencha os "slots" desejados. Para cada imagem, faça o upload do arquivo e, opcionalmente, insira a URL de destino e como ela deve abrir. Cada slot corresponde a um popup dentro do ciclo de rotação.') . '</li>';
+      $output .= '<li>' . t('<strong>Se for Tipo Texto:</strong> Utilize o editor de texto para criar o conteúdo do seu pop-up.') . '</li>';
       $output .= '<li>' . t('<strong>Salve as configurações.</strong>') . '</li>';
       $output .= '<li>' . t('<strong>Limpe todos os caches do sistema.</strong>') . '</li>';
       $output .= '</ol>';
 
-      $output .= '<h4>' . t('Observação sobre a Rotação de Imagens') . '</h4>';
+      $output .= '<h3>' . t('Observações') . '</h3>';
+      $output .= '<h4>' . t('Rotação de Imagens') . '</h4>';
       $output .= '<p>' . t('A rotação é baseada na sessão do usuário. Isso significa que, para testar a troca de imagens, você precisa simular novas visitas. A melhor forma de fazer isso é acessando o site em uma janela anônima, fechando-a completamente e abrindo uma nova janela anônima para a visita seguinte.') . '</p>';
+
+      $files_url = Url::fromRoute('view.files.page_1')->toString();
+      $output .= '<h4>' . t('Arquivos no servidor') . '</h4>';
+      $output .= '<p>' . t('Os arquivos de imagens são organizados no servidor dentro da pasta /sites/default/files/mikedelta_popup/data-postagem') . '</p>';
+      $output .= '<p>' . t('<strong>IMPORTANTE: </strong>Não delete diretamente o arquivo do servidor sem antes excluir o popup no módulo. Poderá acarretar problemas de apontamentos dentro do sistema Drupal. Exclua os arquivos pelo gerenciador de arquivos do Drupal para maior segurança através deste link: <a href=":url">Arquivos do Drupal</a>.', [':url' => $files_url]) . '</p>';
 
       return $output;
 

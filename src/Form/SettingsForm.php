@@ -54,6 +54,34 @@ class SettingsForm extends ConfigFormBase {
   public function buildForm(array $form, FormStateInterface $form_state) {
     $config = $this->config('mikedelta_popup.settings');
 
+    $form['shortcuts'] = [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['mikedelta-popup-shortcuts', 'clearfix']],
+      '#weight' => -100,
+    ];
+
+    // Botão para a Página de Ajuda
+    $form['shortcuts']['help_link'] = [
+      '#type' => 'link',
+      '#title' => $this->t('Ajuda do Módulo'),
+      '#url' => Url::fromRoute('help.page', ['name' => 'mikedelta_popup']),
+      '#attributes' => [
+        'class' => ['button', 'button--primary'],
+        'style' => 'float: right; margin-left: 10px;',
+      ],
+    ];
+
+    // Botão para a Administração de Arquivos
+    $form['shortcuts']['files_link'] = [
+      '#type' => 'link',
+      '#title' => $this->t('Gerenciar Arquivos'),
+      '#url' => Url::fromRoute('view.files.page_1'),
+      '#attributes' => [
+        'class' => ['button'],
+        'style' => 'float: right;',
+      ],
+    ];
+
     // Configurações Globais
     $form['general_settings'] = [
       '#type' => 'details',
