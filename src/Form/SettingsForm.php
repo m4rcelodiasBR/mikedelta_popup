@@ -85,14 +85,14 @@ class SettingsForm extends ConfigFormBase {
       '#type' => 'radios',
       '#title' => $this->t('Tipo de Popup'),
       '#options' => [
-        'text' => $this->t('Apenas Texto'),
-        'image' => $this->t('Apenas Imagem'),
+        'text' => $this->t('Tipo Texto'),
+        'image' => $this->t('Tipo Imagem'),
       ],
       '#default_value' => $config->get('popup_type') ?: 'text',
       '#required' => TRUE,
     ];
 
-    // Configurações para Popup TEXTO
+    // Popup TEXTO
     $form['text_settings'] = [
       '#type' => 'details',
       '#title' => $this->t('Configurações do Popup de Texto'),
@@ -107,7 +107,7 @@ class SettingsForm extends ConfigFormBase {
       '#default_value' => $config->get('popup_text.value'),
     ];
 
-    // Configurações para Popup IMAGEM
+    // IMAGEM
     $form['image_settings'] = [
       '#type' => 'details',
       '#title' => $this->t('Configurações do Popup de Imagem'),
@@ -121,11 +121,15 @@ class SettingsForm extends ConfigFormBase {
       '#type' => 'fieldset',
       '#title' => $this->t('Imagens da Galeria (Máximo de @count)', ['@count' => self::MAX_IMAGES]),
       '#tree' => TRUE,
+      '#description' => $this->t('Você poderá inserir até 10 imagens (10 Popups) nesta galeria. Cada uma redirecionando para um link diferente. Os popups serão rotacionados automaticamente a cada sessão aberta pelo usuário na ordem crescente.'),
     ];
 
     for ($i = 0; $i < self::MAX_IMAGES; $i++) {
 
-      $has_image = isset($gallery_items[$i]['image_fid']) && !empty($gallery_items[$i]['image_fid']);
+      $date_path = (new \DateTime('now', new \DateTimeZone('America/Sao_Paulo')))->format('Y-m-d');
+      $upload_path = 'public://mikedelta_popup/popups/' . $date_path;
+
+      $has_image = (isset($gallery_items[$i]['image_fid']) && !empty($gallery_items[$i]['image_fid'])) || !empty($gallery_items[$i]['image_external_url']);
       $title = $has_image ? $this->t('Imagem @num ✔ (Preenchido)', ['@num' => $i + 1]) : $this->t('Imagem @num', ['@num' => $i + 1]);
 
       $form['image_settings']['gallery_items'][$i] = [
@@ -133,23 +137,49 @@ class SettingsForm extends ConfigFormBase {
         '#title' => $title,
       ];
 
-      $form['image_settings']['gallery_items'][$i]['image_fid'] = [
+      $form['image_settings']['gallery_items'][$i]['image_source_type'] = [
+        '#type' => 'radios',
+        '#title' => $this->t('Fonte da Imagem'),
+        '#options' => [
+          'upload' => $this->t('Fazer Upload'),
+          'external' => $this->t('URL Externa'),
+        ],
+        '#default_value' => $gallery_items[$i]['image_source_type'] ?? 'upload',
+      ];
+
+      $form['image_settings']['gallery_items'][$i]['upload_container'] = [
+          '#type' => 'container',
+          '#states' => ['visible' => [':input[name="gallery_items[' . $i . '][image_source_type]"]' => ['value' => 'upload']]],
+      ];
+
+      $form['image_settings']['gallery_items'][$i]['upload_container']['image_fid'] = [
         '#type' => 'managed_file',
-        '#title' => $this->t('Upload da Imagem'),
-        '#upload_location' => 'public://mikedelta_popup/gallery',
+        '#title' => $this->t('Arquivo da Imagem'),
+        '#upload_location' => $upload_path,
         '#upload_validators' => ['file_validate_extensions' => ['gif png jpg jpeg']],
         '#default_value' => isset($gallery_items[$i]['image_fid']) ? [$gallery_items[$i]['image_fid']] : [],
       ];
 
+      $form['image_settings']['gallery_items'][$i]['external_container'] = [
+        '#type' => 'container',
+        '#states' => ['visible' => [':input[name="gallery_items[' . $i . '][image_source_type]"]' => ['value' => 'external']]],
+      ];
+
+      $form['image_settings']['gallery_items'][$i]['external_container']['image_external_url'] = [
+        '#type' => 'url',
+        '#title' => $this->t('URL da Imagem Externa'),
+        '#default_value' => $gallery_items[$i]['image_external_url'] ?? '',
+      ];
+
       $form['image_settings']['gallery_items'][$i]['link_url'] = [
         '#type' => 'textfield',
-        '#title' => $this->t('Link para esta imagem'),
+        '#title' => $this->t('Link de DESTINO (ao clicar no popup)'),
         '#default_value' => $gallery_items[$i]['link_url'] ?? '',
       ];
 
       $form['image_settings']['gallery_items'][$i]['link_target'] = [
         '#type' => 'radios',
-        '#title' => $this->t('Abrir link em'),
+        '#title' => $this->t('Abrir link de destino em'),
         '#options' => ['_self' => $this->t('Mesma janela'), '_blank' => $this->t('Nova janela')],
         '#default_value' => $gallery_items[$i]['link_target'] ?? '_self',
       ];
@@ -169,7 +199,6 @@ class SettingsForm extends ConfigFormBase {
     return parent::buildForm($form, $form_state);
   }
   
-
   public function clearSlotSubmit(array &$form, FormStateInterface $form_state) {
 
     $triggering_element = $form_state->getTriggeringElement();
@@ -193,50 +222,38 @@ class SettingsForm extends ConfigFormBase {
     $form_state->setRebuild(TRUE);
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-    
-    // Imagem Única
-    $image_fid = $form_state->getValue(['popup_image_upload', 0]);
-    if (!empty($image_fid)) {
-      $file = File::load($image_fid);
-      if ($file) {
-        $file->setPermanent();
-        $file->save();
-      }
-    }
-
-    // Múltiplas Imagens
-    $images_fids = $form_state->getValue('popup_images_upload');
-    if (!empty($images_fids)) {
-      foreach ($images_fids as $fid) {
-        $file = File::load($fid);
-        if ($file) {
-          $file->setPermanent();
-          $file->save();
-        }
-      }
-    }
-
     $config = $this->configFactory()->getEditable('mikedelta_popup.settings');
     $gallery_values = $form_state->getValue('gallery_items');
 
     $saved_gallery_items = [];
     if (!empty($gallery_values)) {
       foreach ($gallery_values as $item) {
-        // Apenas salva o item se uma imagem foi enviada
-        if (!empty($item['image_fid'][0])) {
-          $fid = $item['image_fid'][0];
+        $source_type = $item['image_source_type'];
+        
+        $item_to_save = [
+          'image_source_type' => $source_type,
+          'image_fid' => NULL,
+          'image_external_url' => '',
+          'link_url' => $item['link_url'],
+          'link_target' => $item['link_target'],
+        ];
+
+        if ($source_type === 'upload' && !empty($item['upload_container']['image_fid'][0])) {
+          $fid = $item['upload_container']['image_fid'][0];
           $file = File::load($fid);
           if ($file) {
             $file->setPermanent();
             $file->save();
           }
-          
-          $saved_gallery_items[] = [
-            'image_fid' => $fid,
-            'link_url' => $item['link_url'],
-            'link_target' => $item['link_target'],
-          ];
+          $item_to_save['image_fid'] = $fid;
+          $saved_gallery_items[] = $item_to_save;
+        } elseif ($source_type === 'external' && !empty($item['external_container']['image_external_url'])) {
+          $item_to_save['image_external_url'] = $item['external_container']['image_external_url'];
+          $saved_gallery_items[] = $item_to_save;
         }
       }
     }
@@ -258,8 +275,9 @@ class SettingsForm extends ConfigFormBase {
       ->clear('popup_link_target')
       ->save();
 
-    $cache_url = Url::fromRoute('system.performance_settings')->toString();
+    parent::submitForm($form, $form_state);
 
+    $cache_url = Url::fromRoute('system.performance_settings')->toString();
     $warning_message = $this->t('As alterações podem não ser visíveis imediatamente devido ao sistema de cache. <a href=":cache_url">Limpe todos os caches</a> para garantir que as novas configurações sejam aplicadas.', [
       ':cache_url' => $cache_url,
     ]);

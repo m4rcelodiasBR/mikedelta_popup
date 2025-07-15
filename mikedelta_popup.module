@@ -32,6 +32,7 @@ function mikedelta_popup_help($route_name, RouteMatchInterface $route_match) {
       $output .= '<li>' . t('<strong>Se for Imagem:</strong> No painel "Imagens da Galeria", preencha os "slots" desejados. Para cada imagem, faça o upload do arquivo e, opcionalmente, insira a URL de destino e como ela deve abrir.') . '</li>';
       $output .= '<li>' . t('<strong>Se for Texto:</strong> Utilize o editor de texto para criar o conteúdo do seu pop-up.') . '</li>';
       $output .= '<li>' . t('<strong>Salve as configurações.</strong>') . '</li>';
+      $output .= '<li>' . t('<strong>Limpe todos os caches do sistema.</strong>') . '</li>';
       $output .= '</ol>';
 
       $output .= '<h4>' . t('Observação sobre a Rotação de Imagens') . '</h4>';

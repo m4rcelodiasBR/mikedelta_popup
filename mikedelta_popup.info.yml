@@ -1,6 +1,6 @@
 name: MikeDelta Popup
 type: module
-description: 'Cria e gerencia um pop-up customizável de texto ou imagem para o seu site Drupal. Este módulo desenvolvido por 2ºSG-PD Marcelo Dias'
+description: 'Cria e gerencia um pop-up customizável de texto ou imagem para o seu site Drupal. Este módulo foi desenvolvido por Marcelo Dias da Silva'
 package: MikeDelta
 core_version_requirement: ^10
 version: '1.1.0'
