@@ -20,6 +20,13 @@ O MikeDelta Popup é um módulo para Drupal 10 que permite a criação de um pop
 
 ## Histórico de Versões
 
+### **Versão 1.1.1 - 14/07/2025**
+
+**Melhorias:**
+* Adicionado botão para limpar o slot da imagem em questão. Limpra a imagem e o link.
+* Adicionado aviso de confoguração salva e alerta para limpar os caches (com link direto) para as configurações entrarem em vigor.
+
+
 ### **Versão 1.1.0 - 14/07/2025**
 
 **Melhorias:**
