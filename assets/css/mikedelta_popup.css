@@ -1,3 +1,15 @@
+/**
+ * @file
+ * Estilos para o módulo MikeDelta Popup.
+ *
+ * Define a aparência, posicionamento, animações e responsividade do pop-up,
+ * seguindo a estrutura de 3 camadas: Overlay, Painel de Vidro e Conteúdo.
+ */
+
+/* ==========================================================================
+   1. Overlay e Animação Principal
+   ========================================================================== */
+
 #md-popup-overlay {
   position: fixed;
   top: 0;
@@ -21,6 +33,10 @@
   visibility: visible;
 }
 
+/* ==========================================================================
+   2. Painel de Vidro (O Contêiner Principal do Pop-up)
+   ========================================================================== */
+
 #md-popup-glass-pane {
   position: relative;
   box-shadow: 0 5px 15px rgba(0,0,0,0.9);
@@ -32,6 +48,12 @@
   max-width: 55vw;  
   transition: background-color 0.4s;
 }
+
+/* ==========================================================================
+   3. Estilos Específicos por Tipo de Pop-up
+   ========================================================================== */
+
+/* --- Pop-up de Imagem --- */
 
 #md-popup-glass-pane.popup-type-image {
   background-color: transparent;
@@ -55,6 +77,8 @@
   object-fit: contain;
 }
 
+/* --- Pop-up de Texto --- */
+
 #md-popup-glass-pane.popup-type-text {
   background-color: #fff;
   padding: 2.5rem 2rem;
@@ -67,6 +91,10 @@
   overflow-wrap: break-word;
   word-wrap: break-word;
 }
+
+/* ==========================================================================
+   4. Elementos Internos (Botão de Fechar)
+   ========================================================================== */
 
 #md-popup-close {
   position: absolute;

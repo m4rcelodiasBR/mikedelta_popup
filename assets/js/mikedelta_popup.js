@@ -1,6 +1,22 @@
+/**
+ * @file
+ * Comportamento de JavaScript para o popup do módulo MikeDelta Popup.
+ *
+ * Este arquivo lida com a lógica de front-end para exibir, animar e fechar o
+ * pop-up com base nas configurações passadas pelo PHP via drupalSettings.
+ * Ele garante que o pop-up apareça apenas uma vez por sessão de aba.
+ */
 (function ($, Drupal, drupalSettings, once) {
   'use strict';
 
+  /**
+   * Comportamento do Drupal para inicializar o MikeDelta Popup.
+   *
+   * @type {Drupal~behavior}
+   *
+   * @prop {Drupal~behaviorAttach} attach
+   * A função que anexa e inicializa a lógica do pop-up.
+   */
   Drupal.behaviors.mikeDeltaPopup = {
     attach: function (context, settings) {
       const elementsToProcess = once('md-popup', 'body', context);
@@ -46,6 +62,10 @@
         const $overlay = $('#md-popup-overlay');
 
         setTimeout(function() { $overlay.addClass('is-visible'); }, 50);
+
+        /**
+         * Lida com o fechamento e remoção do pop-up com uma animação de fade-out.
+         */
         function closeModal() {
           $overlay.removeClass('is-visible');
           setTimeout(function() { $overlay.remove(); }, 300);

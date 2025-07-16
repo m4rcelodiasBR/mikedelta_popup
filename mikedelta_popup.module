@@ -1,10 +1,15 @@
 <?php
 
+/**
+ * @file
+ * Funções principais e hooks para o módulo MikeDelta Popup.
+ */
+
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Url;
 
 /**
- * Implements hook_help().
+ * Implementa hook_help().
  */
 function mikedelta_popup_help($route_name, RouteMatchInterface $route_match) {
   switch ($route_name) {
@@ -52,6 +57,12 @@ function mikedelta_popup_help($route_name, RouteMatchInterface $route_match) {
 
 /**
  * Implements hook_page_attachments().
+ *
+ * Anexa os assets (CSS/JS) e as configurações do pop-up à página.
+ * A lógica de exibição (verificação de data, rotação, etc.) é executada aqui.
+ *
+ * @param array $page
+ * A render array da página, passada por referência.
  */
 function mikedelta_popup_page_attachments(array &$page) {
 

@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * @file
+ * Contém o formulário de configuração para o módulo MikeDelta Popup.
+ */
+
 namespace Drupal\mikedelta_popup\Form;
 
 use Drupal\Core\Form\ConfigFormBase;
@@ -10,20 +15,30 @@ use Drupal\Core\Messenger\MessengerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Url;
 
+/**
+ * Define o formulário de configurações para o MikeDelta Popup.
+ *
+ * Este formulário permite aos administradores gerenciar todas as configurações
+ * do pop-up, incluindo ativação, tipo de conteúdo e a galeria de pop-ups
+ * rotativas. Ele também fornece atalhos para páginas de ajuda e gerenciamento
+ * de arquivos.
+ */
 class SettingsForm extends ConfigFormBase {
 
   /**
-   * O serviço de mensagens.
+   * O serviço de mensagens do Drupal.
+   *
    * @var \Drupal\Core\Messenger\MessengerInterface
    */
   protected $messenger;
 
   /**
-   * Constrói o SettingsForm.
+   * Constrói o objeto do formulário SettingsForm.
+   *
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
-   * A fábrica de configurações.
+   * A fábrica de configurações do Drupal.
    * @param \Drupal\Core\Messenger\MessengerInterface $messenger
-   * O serviço de mensagens.
+   * O serviço de mensagens para exibir notificações ao usuário.
    */
   public function __construct(ConfigFactoryInterface $config_factory, MessengerInterface $messenger) {
     parent::__construct($config_factory);
@@ -40,16 +55,30 @@ class SettingsForm extends ConfigFormBase {
     );
   }
 
+  /**
+   * O número máximo de imagens permitidas na galeria.
+   *
+   * @var int
+   */
   const MAX_IMAGES = 10;
 
+  /**
+   * {@inheritdoc}
+   */
   public function getFormId() {
     return 'mikedelta_popup_settings_form';
   }
 
+  /**
+   * {@inheritdoc}
+   */
   protected function getEditableConfigNames() {
     return ['mikedelta_popup.settings'];
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function buildForm(array $form, FormStateInterface $form_state) {
     $config = $this->config('mikedelta_popup.settings');
 
@@ -229,6 +258,18 @@ class SettingsForm extends ConfigFormBase {
     return parent::buildForm($form, $form_state);
   }
   
+  /**
+   * Manipulador de submissão customizado para o botão "Limpar este slot".
+   *
+   * Esta função limpa os dados de um slot específico da galeria de imagens,
+   * tanto na memória do formulário quanto na configuração salva, e então
+   * reconstrói o formulário para refletir a mudança.
+   *
+   * @param array $form
+   * Uma array associativa contendo a estrutura do formulário.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   * O estado atual do formulário.
+   */
   public function clearSlotSubmit(array &$form, FormStateInterface $form_state) {
 
     $triggering_element = $form_state->getTriggeringElement();
