@@ -1,5 +1,4 @@
 <?php
-// mikedelta_popup.module
 
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Url;
@@ -60,7 +59,6 @@ function mikedelta_popup_page_attachments(array &$page) {
     return;
   }
 
-  // Aqui faz o MikeDelta Popup aparecer apenas na página inicial <front>
   $path_matcher = \Drupal::service('path.matcher');
   if (!$path_matcher->isFrontPage()) {
     return; // Se não for a página inicial, para a execução aqui.
@@ -68,7 +66,6 @@ function mikedelta_popup_page_attachments(array &$page) {
 
   $config = \Drupal::config('mikedelta_popup.settings');
 
-  // Lógica de verificação de ativação e data (continua a mesma)
   if (!$config->get('popup_enabled')) { return; }
   $start_date_str = $config->get('activation_start_date');
   $end_date_str = $config->get('activation_end_date');
@@ -103,30 +100,31 @@ function mikedelta_popup_page_attachments(array &$page) {
   $link_target = '_self';
 
   if ($image_to_display) {
-    $file = \Drupal\file\Entity\File::load($image_to_display['image_fid']);
-    if ($file) {
-      $image_url = $file->createFileUrl();
+    if (isset($image_to_display['image_source_type']) && $image_to_display['image_source_type'] === 'external') {
+        $image_url = $image_to_display['image_external_url'] ?? '';
     }
-    // Pega os valores do item a ser exibido
+    else {
+        $file = \Drupal\file\Entity\File::load($image_to_display['image_fid']);
+        if ($file) {
+            $image_url = $file->createFileUrl();
+        }
+    }
+
     $link_url_string = $image_to_display['link_url'] ?? '';
     $link_target = $image_to_display['link_target'] ?? '_self';
   }
   
-  // --- BLOCO DE CÓDIGO CORRIGIDO ---
-  // A verificação de segurança foi reinserida aqui.
   $final_link_url = '';
   if (!empty($link_url_string)) {
-    // Verifica se é uma URL externa
     if (str_starts_with($link_url_string, 'http://') || str_starts_with($link_url_string, 'https://')) {
       $final_link_url = $link_url_string;
     }
-    // Senão, trata como um caminho interno do Drupal
     else {
       try {
         $final_link_url = \Drupal\Core\Url::fromUserInput($link_url_string)->toString();
       } catch (\InvalidArgumentException $e) {
         \Drupal::logger('mikedelta_popup')->warning('O caminho interno para o item da galeria é inválido: @path', ['@path' => $link_url_string]);
-        $final_link_url = '#'; // Fallback seguro
+        $final_link_url = '#';
       }
     }
   }
@@ -134,14 +132,13 @@ function mikedelta_popup_page_attachments(array &$page) {
   $build = ['#type' => 'processed_text', '#text' => $config->get('popup_text.value'), '#format' => $config->get('popup_text.format')];
   $rendered_text = \Drupal::service('renderer')->render($build);
 
-  // Anexa a biblioteca e as configurações
   $page['#cache']['contexts'][] = 'session';
   $page['#attached']['library'][] = 'mikedelta_popup/md-assets';
   $page['#attached']['drupalSettings']['mikedelta_popup'] = [
     'type' => $popup_type,
     'text' => (string) $rendered_text,
     'imageUrl' => $image_url,
-    'linkUrl' => $final_link_url, // Usa a URL final e segura
+    'linkUrl' => $final_link_url,
     'linkTarget' => $link_target,
   ];
 }

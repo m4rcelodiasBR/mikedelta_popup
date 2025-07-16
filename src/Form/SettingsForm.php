@@ -1,5 +1,4 @@
 <?php
-// src/Form/SettingsForm.php
 
 namespace Drupal\mikedelta_popup\Form;
 
@@ -197,12 +196,15 @@ class SettingsForm extends ConfigFormBase {
         '#type' => 'url',
         '#title' => $this->t('URL da Imagem Externa'),
         '#default_value' => $gallery_items[$i]['image_external_url'] ?? '',
+        '#maxlength' => 512,
+        '#description' => $this->t('Permite URLs longas, utilize preferencialmente URLs .mb ou .mil.br'),
       ];
 
       $form['image_settings']['gallery_items'][$i]['link_url'] = [
         '#type' => 'textfield',
         '#title' => $this->t('Link de DESTINO (ao clicar no popup)'),
         '#default_value' => $gallery_items[$i]['link_url'] ?? '',
+        '#maxlength' => 512,
       ];
 
       $form['image_settings']['gallery_items'][$i]['link_target'] = [
