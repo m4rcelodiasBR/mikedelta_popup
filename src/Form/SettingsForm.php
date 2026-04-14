@@ -12,6 +12,7 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\file\Entity\File;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Messenger\MessengerInterface;
+use Drupal\file\FileUsage\FileUsageInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Url;
 
@@ -24,61 +25,33 @@ use Drupal\Core\Url;
  * de arquivos.
  */
 class SettingsForm extends ConfigFormBase {
-
-  /**
-   * O serviço de mensagens do Drupal.
-   *
-   * @var \Drupal\Core\Messenger\MessengerInterface
-   */
   protected $messenger;
+  protected $fileUsage;
+  const MAX_IMAGES = 10;
 
-  /**
-   * Constrói o objeto do formulário SettingsForm.
-   *
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
-   * A fábrica de configurações do Drupal.
-   * @param \Drupal\Core\Messenger\MessengerInterface $messenger
-   * O serviço de mensagens para exibir notificações ao usuário.
-   */
-  public function __construct(ConfigFactoryInterface $config_factory, MessengerInterface $messenger) {
+  public function __construct(ConfigFactoryInterface $config_factory, MessengerInterface $messenger, FileUsageInterface $file_usage) {
     parent::__construct($config_factory);
     $this->messenger = $messenger;
+    $this->fileUsage = $file_usage;
+    
   }
 
-  /**
-   * {@inheritdoc}
-   */
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('config.factory'),
-      $container->get('messenger')
+      $container->get('messenger'),
+      $container->get('file.usage')
     );
   }
 
-  /**
-   * O número máximo de imagens permitidas na galeria.
-   *
-   * @var int
-   */
-  const MAX_IMAGES = 10;
-
-  /**
-   * {@inheritdoc}
-   */
   public function getFormId() {
     return 'mikedelta_popup_settings_form';
   }
 
-  /**
-   * {@inheritdoc}
-   */
   protected function getEditableConfigNames() {
     return ['mikedelta_popup.settings'];
   }
 
-  /**
-   * {@inheritdoc}
-   */
   public function buildForm(array $form, FormStateInterface $form_state) {
     $config = $this->config('mikedelta_popup.settings');
 
@@ -180,26 +153,21 @@ class SettingsForm extends ConfigFormBase {
       '#description' => $this->t('Você poderá inserir até 10 imagens (10 Popups) nesta galeria. Cada uma redirecionando para um link diferente. Os popups serão rotacionados automaticamente a cada sessão aberta pelo usuário na ordem crescente.'),
     ];
 
+    $timezone = \Drupal::config('system.date')->get('timezone.default') ?: 'America/Sao_Paulo';
     for ($i = 0; $i < self::MAX_IMAGES; $i++) {
 
-      $date_path = (new \DateTime('now', new \DateTimeZone('America/Sao_Paulo')))->format('Y-m-d');
+      $date_path = (new \DateTime('now', new \DateTimeZone($timezone)))->format('Y-m-d');
       $upload_path = 'public://mikedelta_popup/popups/' . $date_path;
 
       $has_image = (isset($gallery_items[$i]['image_fid']) && !empty($gallery_items[$i]['image_fid'])) || !empty($gallery_items[$i]['image_external_url']);
       $title = $has_image ? $this->t('Imagem @num ✔ (Preenchido)', ['@num' => $i + 1]) : $this->t('Imagem @num', ['@num' => $i + 1]);
 
-      $form['image_settings']['gallery_items'][$i] = [
-        '#type' => 'details',
-        '#title' => $title,
-      ];
+      $form['image_settings']['gallery_items'][$i] = ['#type' => 'details', '#title' => $title];
 
       $form['image_settings']['gallery_items'][$i]['image_source_type'] = [
         '#type' => 'radios',
         '#title' => $this->t('Fonte da Imagem'),
-        '#options' => [
-          'upload' => $this->t('Fazer Upload'),
-          'external' => $this->t('URL Externa'),
-        ],
+        '#options' => ['upload' => $this->t('Fazer Upload'), 'external' => $this->t('URL Externa')],
         '#default_value' => $gallery_items[$i]['image_source_type'] ?? 'upload',
       ];
 
@@ -258,18 +226,6 @@ class SettingsForm extends ConfigFormBase {
     return parent::buildForm($form, $form_state);
   }
   
-  /**
-   * Manipulador de submissão customizado para o botão "Limpar este slot".
-   *
-   * Esta função limpa os dados de um slot específico da galeria de imagens,
-   * tanto na memória do formulário quanto na configuração salva, e então
-   * reconstrói o formulário para refletir a mudança.
-   *
-   * @param array $form
-   * Uma array associativa contendo a estrutura do formulário.
-   * @param \Drupal\Core\Form\FormStateInterface $form_state
-   * O estado atual do formulário.
-   */
   public function clearSlotSubmit(array &$form, FormStateInterface $form_state) {
 
     $triggering_element = $form_state->getTriggeringElement();
@@ -282,12 +238,18 @@ class SettingsForm extends ConfigFormBase {
     $config = $this->configFactory()->getEditable('mikedelta_popup.settings');
     $gallery_items = $config->get('gallery_items');
 
-    unset($gallery_items[$index_to_clear]);
+    if (isset($gallery_items[$index_to_clear]['image_fid'])) {
+      $fid = $gallery_items[$index_to_clear]['image_fid'];
+      $file = File::load($fid);
+      if ($file) {
+        $this->fileUsage->delete($file, 'mikedelta_popup', 'gallery_image', $fid);
+      }
+    }
 
+    unset($gallery_items[$index_to_clear]);
     $gallery_items = array_values($gallery_items);
     
     $config->set('gallery_items', $gallery_items)->save();
-
     $this->messenger->addStatus($this->t('O slot de Imagem @num foi limpo.', ['@num' => (int)$index_to_clear + 1]));
   
     $form_state->setRebuild(TRUE);
@@ -317,8 +279,11 @@ class SettingsForm extends ConfigFormBase {
           $fid = $item['upload_container']['image_fid'][0];
           $file = File::load($fid);
           if ($file) {
-            $file->setPermanent();
-            $file->save();
+            if (!$file->isPermanent()) {
+              $file->setPermanent();
+              $file->save();
+              $this->fileUsage->add($file, 'mikedelta_popup', 'gallery_image', $fid);
+            }
           }
           $item_to_save['image_fid'] = $fid;
           $saved_gallery_items[] = $item_to_save;
@@ -336,14 +301,6 @@ class SettingsForm extends ConfigFormBase {
       ->set('popup_type', $form_state->getValue('popup_type'))
       ->set('popup_text', $form_state->getValue('popup_text'))
       ->set('gallery_items', $saved_gallery_items)
-      ->clear('image_mode')
-      ->clear('popup_image_upload')
-      ->clear('popup_image_url')
-      ->clear('popup_images_upload')
-      ->clear('rotation_mode')
-      ->clear('rotation_speed')
-      ->clear('popup_link_url')
-      ->clear('popup_link_target')
       ->save();
 
     parent::submitForm($form, $form_state);

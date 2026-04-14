@@ -57,12 +57,6 @@ function mikedelta_popup_help($route_name, RouteMatchInterface $route_match) {
 
 /**
  * Implements hook_page_attachments().
- *
- * Anexa os assets (CSS/JS) e as configurações do pop-up à página.
- * A lógica de exibição (verificação de data, rotação, etc.) é executada aqui.
- *
- * @param array $page
- * A render array da página, passada por referência.
  */
 function mikedelta_popup_page_attachments(array &$page) {
 
@@ -72,84 +66,91 @@ function mikedelta_popup_page_attachments(array &$page) {
 
   $path_matcher = \Drupal::service('path.matcher');
   if (!$path_matcher->isFrontPage()) {
-    return; // Se não for a página inicial, para a execução aqui.
+    return; 
   }
 
   $config = \Drupal::config('mikedelta_popup.settings');
 
   if (!$config->get('popup_enabled')) { return; }
+
+  // Respeita o fuso horário configurado no Drupal dinamicamente
+  $timezone = \Drupal::config('system.date')->get('timezone.default') ?: 'America/Sao_Paulo';
+  $now = new \DateTime('now', new \DateTimeZone($timezone));
+
   $start_date_str = $config->get('activation_start_date');
   $end_date_str = $config->get('activation_end_date');
-  $now = new \DateTime('now', new \DateTimeZone('America/Sao_Paulo')); // Usa o fuso horário correto
+
   if (!empty($start_date_str)) {
-    $start_date = new \DateTime($start_date_str);
+    $start_date = new \DateTime($start_date_str, new \DateTimeZone($timezone));
     if ($now < $start_date) { return; }
   }
   if (!empty($end_date_str)) {
-    $end_date = new \DateTime($end_date_str);
+    $end_date = new \DateTime($end_date_str, new \DateTimeZone($timezone));
     $end_date->modify('+1 day');
     if ($now > $end_date) { return; }
   }
 
   $popup_type = $config->get('popup_type');
-  $image_to_display = NULL;
+  $js_settings = ['type' => $popup_type];
+
+  // Adiciona as Cache Tags corretas para invalidar a página quando a config do módulo for salva
+  $page['#cache']['tags'] = $config->getCacheTags();
 
   if ($popup_type == 'image') {
     $gallery_items = $config->get('gallery_items');
+    $gallery_data = [];
 
     if (!empty($gallery_items)) {
-      $session = \Drupal::request()->getSession();
-      $last_index = $session->get('mikedelta_popup_last_index', -1);
-      $next_index = ($last_index + 1) % count($gallery_items);
-      $session->set('mikedelta_popup_last_index', $next_index);
-      $image_to_display = $gallery_items[$next_index];
-    }
-  }
-
-  $image_url = '';
-  $link_url_string = '';
-  $link_target = '_self';
-
-  if ($image_to_display) {
-    if (isset($image_to_display['image_source_type']) && $image_to_display['image_source_type'] === 'external') {
-        $image_url = $image_to_display['image_external_url'] ?? '';
-    }
-    else {
-        $file = \Drupal\file\Entity\File::load($image_to_display['image_fid']);
-        if ($file) {
-            $image_url = $file->createFileUrl();
+      foreach ($gallery_items as $item) {
+        $image_url = '';
+        if (isset($item['image_source_type']) && $item['image_source_type'] === 'external') {
+            $image_url = $item['image_external_url'] ?? '';
+        } else {
+            $file = \Drupal\file\Entity\File::load($item['image_fid']);
+            if ($file) {
+                $image_url = $file->createFileUrl();
+            }
         }
-    }
 
-    $link_url_string = $image_to_display['link_url'] ?? '';
-    $link_target = $image_to_display['link_target'] ?? '_self';
-  }
-  
-  $final_link_url = '';
-  if (!empty($link_url_string)) {
-    if (str_starts_with($link_url_string, 'http://') || str_starts_with($link_url_string, 'https://')) {
-      $final_link_url = $link_url_string;
-    }
-    else {
-      try {
-        $final_link_url = \Drupal\Core\Url::fromUserInput($link_url_string)->toString();
-      } catch (\InvalidArgumentException $e) {
-        \Drupal::logger('mikedelta_popup')->warning('O caminho interno para o item da galeria é inválido: @path', ['@path' => $link_url_string]);
-        $final_link_url = '#';
+        $link_url_string = $item['link_url'] ?? '';
+        $final_link_url = '';
+        if (!empty($link_url_string)) {
+          if (str_starts_with($link_url_string, 'http://') || str_starts_with($link_url_string, 'https://')) {
+            $final_link_url = $link_url_string;
+          } else {
+            try {
+              $final_link_url = \Drupal\Core\Url::fromUserInput($link_url_string)->toString();
+            } catch (\InvalidArgumentException $e) {
+              \Drupal::logger('mikedelta_popup')->warning('Caminho interno inválido: @path', ['@path' => $link_url_string]);
+              $final_link_url = '#';
+            }
+          }
+        }
+
+        if (!empty($image_url)) {
+          $gallery_data[] = [
+            'imageUrl' => $image_url,
+            'linkUrl' => $final_link_url,
+            'linkTarget' => $item['link_target'] ?? '_self',
+          ];
+        }
       }
     }
-  }
-  
-  $build = ['#type' => 'processed_text', '#text' => $config->get('popup_text.value'), '#format' => $config->get('popup_text.format')];
-  $rendered_text = \Drupal::service('renderer')->render($build);
+    
+    // Passa todos os itens para o JS decidir a rotação (Evita DoS por quebra de Cache)
+    $js_settings['gallery'] = $gallery_data;
 
-  $page['#cache']['contexts'][] = 'session';
+  } else {
+    $build = [
+      '#type' => 'processed_text', 
+      '#text' => $config->get('popup_text.value'), 
+      '#format' => $config->get('popup_text.format')
+    ];
+    // Uso do renderPlain() impede a exceção The render context is empty
+    $rendered_text = \Drupal::service('renderer')->renderPlain($build);
+    $js_settings['text'] = (string) $rendered_text;
+  }
+
   $page['#attached']['library'][] = 'mikedelta_popup/md-assets';
-  $page['#attached']['drupalSettings']['mikedelta_popup'] = [
-    'type' => $popup_type,
-    'text' => (string) $rendered_text,
-    'imageUrl' => $image_url,
-    'linkUrl' => $final_link_url,
-    'linkTarget' => $link_target,
-  ];
+  $page['#attached']['drupalSettings']['mikedelta_popup'] = $js_settings;
 }
