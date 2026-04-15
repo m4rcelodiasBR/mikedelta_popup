@@ -20,6 +20,15 @@ O MikeDelta Popup é um módulo para Drupal 10 que permite a criação de um pop
 
 ## Histórico de Versões
 
+### **Versão 1.1.3 - 15/04/2026**
+>[!NOTE]
+>Testado com Drupal 10.5.x
+
+**Melhorias:**
+* adicionado melhorias de segurança contra XSS e outras brechas.
+* correção de pequenos bugs de segundo plano.
+* adicionado a funcionalidade de fechar o popup pressionando a tecla ESC.
+
 ### **Versão 1.1.2 - 15/07/2025**
 >[!NOTE]
 >Testado com Drupal 10.4.x
@@ -64,8 +73,14 @@ O MikeDelta Popup é um módulo para Drupal 10 que permite a criação de um pop
 
 * **Autor Principal:** Marcelo Dias da Silva
 * **Data de Criação:** Julho/2025
-* **Processo de Desenvolvimento:** Este módulo foi desenvolvido por Marcelo Dias da Silva com o auxílio da inteligência artificial Gemini do Google como uma ferramenta de programação, interpretação, análise e geração de código e depuração. Todo o processo foi iterativo, baseado nas solicitações e testes do autor.
+
+Este módulo foi desenvolvido por Marcelo Dias da Silva com o auxílio da inteligência artificial Gemini do Google como uma ferramenta de programação, interpretação, análise e geração de código e depuração. Todo o processo foi iterativo, baseado nas solicitações e testes do autor.
 
 ## Licença
 
 Este projeto é licenciado sob a GNU General Public License, versão 3 or superior. Veja o arquivo `LICENSE.txt` para mais detalhes.
+
+## Downloads
+
+- [mikedelta_popup-v1.1.3.zip](https://github.com/m4rcelodiasBR/mikedelta_popup/archive/refs/tags/v1.1.3.zip)
+- [mikedelta_popup-v1.1.3.tar.gz](https://github.com/m4rcelodiasBR/mikedelta_popup/archive/refs/tags/v1.1.3.tar.gz)
