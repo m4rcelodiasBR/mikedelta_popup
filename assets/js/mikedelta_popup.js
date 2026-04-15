@@ -39,9 +39,8 @@
 
           const currentImage = popupSettings.gallery[nextIndex];
 
-          // Higienização (Anti-XSS) para saídas inseridas dinamicamente
           const safeImageUrl = Drupal.checkPlain(currentImage.imageUrl);
-          contentHtml = `<img src="${safeImageUrl}" alt="Popup Image">`;
+          contentHtml = `<img src="${safeImageUrl}" alt="Popup Image" fetchpriority="high">`;
 
           if (currentImage.linkUrl && currentImage.linkUrl !== "#") {
             const safeLinkUrl = encodeURI(currentImage.linkUrl);
@@ -63,13 +62,13 @@
 
         const popupHtml = `
           <div id="md-popup-overlay">
-            <div id="md-popup-glass-pane" class="popup-type-${popupSettings.type}">
+            <div id="md-popup-glass-pane" class="popup-type-${popupSettings.type}" role="dialog" aria-modal="true">
               <div id="md-popup-content">
                 ${linkWrapperStart}
                 ${contentHtml}
                 ${linkWrapperEnd}
               </div>
-              <div id="md-popup-close">&times;</div>
+              <button id="md-popup-close" aria-label="Fechar pop-up" title="Fechar">&times;</button>
             </div>
           </div>
         `;
@@ -84,15 +83,19 @@
 
         function closeModal() {
           $overlay.removeClass("is-visible");
-          setTimeout(function () {
-            $overlay.remove();
-          }, 300);
+          $(document).off("keydown.mdPopup");
+          setTimeout(function () { $overlay.remove(); }, 300);
         }
+
         $overlay.find("#md-popup-close").on("click", closeModal);
         $overlay.on("click", function (e) {
           if (e.target === this) {
             closeModal();
           }
+        });
+
+        $(document).on("keydown.mdPopup", function (e) {
+          if (e.key === "Escape") { closeModal(); }
         });
 
         sessionStorage.setItem("mdPopupShown", "true");
